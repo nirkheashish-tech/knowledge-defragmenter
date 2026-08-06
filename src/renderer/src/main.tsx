@@ -14,7 +14,8 @@ import {
   User,
   History,
   Info,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react';
 import './styles.css';
 
@@ -91,7 +92,8 @@ function App() {
       {/* Refined Header */}
       <header className="h-16 border-b glass flex items-center justify-between px-6 drag z-50">
         <div className="flex items-center gap-3 header-mac-padding">
-          <img src="./assets/icon.png" className="w-8 h-8 rounded-lg shadow-sm" alt="Logo" />
+          {/* Fixed Logo Path: public assets are served from root / in production */}
+          <img src="/assets/icon.png" className="w-8 h-8 rounded-lg shadow-sm" alt="Logo" onError={(e) => (e.currentTarget.src = 'https://raw.githubusercontent.com/AshishSardana/tessera/main/assets/icon.png')} />
           <h1 className="text-[17px] font-semibold tracking-tight">Knowledge Defragmenter</h1>
         </div>
         <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-black/5 rounded-full no-drag transition-colors">
@@ -107,14 +109,14 @@ function App() {
               {/* Master Doc Dropzone */}
               <div 
                 onClick={handleAddMaster}
-                className={`group h-80 border-[1.5px] rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${masterDoc ? 'border-blue-500 bg-white shadow-lg' : 'border-slate-300 bg-white/50 hover:border-blue-400 hover:bg-white hover:shadow-md'}`}
+                className={`group h-80 border-[1.5px] rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 p-8 ${masterDoc ? 'border-blue-500 bg-white shadow-lg' : 'border-slate-300 bg-white/50 hover:border-blue-400 hover:bg-white hover:shadow-md'}`}
               >
                 {masterDoc ? (
-                  <div className="flex flex-col items-center animate-in">
+                  <div className="flex flex-col items-center animate-in text-center">
                     <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
                       <FileText size={40} className="text-blue-600" />
                     </div>
-                    <span className="font-semibold text-lg">{masterDoc.name}</span>
+                    <span className="font-semibold text-lg line-clamp-2 px-4">{masterDoc.name}</span>
                     <span className="text-sm text-slate-500 mt-2">Voice Anchor Document</span>
                   </div>
                 ) : (
@@ -131,10 +133,10 @@ function App() {
               {/* Source Docs Dropzone */}
               <div 
                 onClick={handleAddSources}
-                className={`group h-80 border-[1.5px] rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${sourceDocs.length > 0 ? 'border-indigo-500 bg-white shadow-lg' : 'border-slate-300 bg-white/50 hover:border-indigo-400 hover:bg-white hover:shadow-md'}`}
+                className={`group h-80 border-[1.5px] rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 p-8 ${sourceDocs.length > 0 ? 'border-indigo-500 bg-white shadow-lg' : 'border-slate-300 bg-white/50 hover:border-indigo-400 hover:bg-white hover:shadow-md'}`}
               >
                 {sourceDocs.length > 0 ? (
-                  <div className="flex flex-col items-center animate-in">
+                  <div className="flex flex-col items-center animate-in text-center">
                     <div className="flex -space-x-6 mb-6">
                       {sourceDocs.slice(0, 3).map((doc, i) => (
                         <div key={doc.id} className="w-20 h-20 bg-indigo-50 rounded-2xl border-4 border-white shadow-sm flex items-center justify-center text-indigo-600">
@@ -214,7 +216,6 @@ function App() {
                   onSave={async (s: any) => {
                     await window.defrag.saveSettings(s);
                     await refreshSettings();
-                    setShowSettings(false);
                   }} 
                 />
               </div>
@@ -277,7 +278,7 @@ function EditorView({ masterDoc, sourceDocs, suggestions, onBack }: any) {
           </div>
         </div>
 
-        {/* Right Pane: Source Grid */}
+        {/* Right Pane: Synthesis Grid */}
         <div className="w-1/2 overflow-y-auto p-12 bg-[#f5f5f7]">
           <div className="max-w-2xl mx-auto space-y-12">
             <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">
@@ -350,9 +351,18 @@ function EditorView({ masterDoc, sourceDocs, suggestions, onBack }: any) {
 function SettingsContent({ settings, onSave }: any) {
   const [localSettings, setLocalSettings] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveConfirmed, setSaveConfirmed] = useState(false);
 
   const provider = localSettings?.aiProvider || 'openai';
   const hasKey = settings?.apiKeys?.[provider];
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    await onSave(localSettings);
+    setIsSaving(false);
+    setSaveConfirmed(true);
+    setTimeout(() => setSaveConfirmed(false), 3000);
+  };
 
   return (
     <div className="space-y-10">
@@ -380,7 +390,15 @@ function SettingsContent({ settings, onSave }: any) {
               onChange={e => setLocalSettings({...localSettings, [`${localSettings.aiProvider}ApiKey`]: e.target.value})}
               className="w-full bg-slate-50 border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none" 
             />
-            {hasKey && <p className="text-[10px] text-green-600 font-medium">✓ Key stored securely in system keychain</p>}
+            {hasKey ? (
+              <p className="text-[10px] text-green-600 font-medium flex items-center gap-1">
+                <ShieldCheck size={12} /> Stored securely in system keychain
+              </p>
+            ) : (
+              <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                <AlertCircle size={12} /> No key found for this provider
+              </p>
+            )}
           </div>
         </div>
       </section>
@@ -427,14 +445,11 @@ function SettingsContent({ settings, onSave }: any) {
       <div className="pt-6">
         <button 
           disabled={isSaving}
-          onClick={async () => { 
-            setIsSaving(true);
-            await onSave(localSettings); 
-            setIsSaving(false);
-          }} 
-          className="w-full py-4 bg-[#0071e3] text-white rounded-xl font-bold hover:bg-[#0077ed] transition-all disabled:bg-slate-300"
+          onClick={handleSave} 
+          className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${saveConfirmed ? 'bg-green-600 text-white' : 'bg-[#0071e3] text-white hover:bg-[#0077ed] disabled:bg-slate-300'}`}
         >
-          {isSaving ? 'Saving...' : 'Apply Settings'}
+          {isSaving ? <Loader2 className="animate-spin" size={20} /> : saveConfirmed ? <Check size={20} /> : null}
+          {isSaving ? 'Saving Key...' : saveConfirmed ? 'Key Saved Successfully' : 'Apply Settings'}
         </button>
       </div>
     </div>

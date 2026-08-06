@@ -13,7 +13,8 @@ import {
   Mic,
   ChevronRight,
   Loader2,
-  Trash2
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 import './styles.css';
 
@@ -27,8 +28,14 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [settings, setSettings] = useState<any>(null);
 
+  const refreshSettings = async () => {
+    const s = await window.defrag.getSettings();
+    setSettings(s);
+    return s;
+  };
+
   useEffect(() => {
-    window.defrag.getSettings().then(setSettings);
+    refreshSettings();
   }, []);
 
   const handleAddMaster = async () => {
@@ -78,7 +85,17 @@ function App() {
   };
 
   if (view === 'settings') {
-    return <SettingsView settings={settings} onBack={() => setView('setup')} onSave={(s) => { setSettings(s); window.defrag.saveSettings(s); }} />;
+    return (
+      <SettingsView 
+        settings={settings} 
+        onBack={() => setView('setup')} 
+        onSave={async (s: any) => {
+          await window.defrag.saveSettings(s);
+          await refreshSettings();
+          setView('setup');
+        }} 
+      />
+    );
   }
 
   if (view === 'editor') {
@@ -95,11 +112,14 @@ function App() {
     );
   }
 
+  const provider = settings?.aiProvider || 'openai';
+  const hasKey = settings?.apiKeys?.[provider];
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="h-16 border-b bg-white flex items-center justify-between px-6 drag">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">D</div>
+          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">K</div>
           <h1 className="text-lg font-semibold text-slate-800">Knowledge Defragmenter</h1>
         </div>
         <button onClick={() => setView('settings')} className="p-2 hover:bg-slate-100 rounded-full no-drag">
@@ -165,28 +185,31 @@ function App() {
           </div>
         </div>
 
-        <button 
-          disabled={!masterDoc || sourceDocs.length === 0 || isProcessing}
-          onClick={startSynthesis}
-          className={`mt-12 px-8 py-4 rounded-full font-bold text-lg flex items-center gap-3 shadow-xl transition-all ${!masterDoc || sourceDocs.length === 0 || isProcessing ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105 active:scale-95'}`}
-        >
-          {!settings?.apiKeys?.[settings?.aiProvider || 'openai'] && (
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-amber-100 text-amber-800 text-xs py-1 px-3 rounded-full border border-amber-200 whitespace-nowrap">
-              ⚠️ API Key required in Settings
-            </div>
-          )}
-          {isProcessing ? (
-            <>
-              <Loader2 className="animate-spin" />
-              Synthesizing Voice...
-            </>
-          ) : (
-            <>
-              <Zap size={24} />
-              Start Automated Synthesis
-            </>
-          )}
-        </button>
+        <div className="relative mt-12">
+            {!hasKey && (
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-amber-50 text-amber-700 text-xs py-2 px-4 rounded-lg border border-amber-200 flex items-center gap-2 shadow-sm whitespace-nowrap">
+                    <AlertCircle size={14} />
+                    <span>API Key required in Settings</span>
+                </div>
+            )}
+            <button 
+            disabled={!masterDoc || sourceDocs.length === 0 || isProcessing}
+            onClick={startSynthesis}
+            className={`px-8 py-4 rounded-full font-bold text-lg flex items-center gap-3 shadow-xl transition-all ${!masterDoc || sourceDocs.length === 0 || isProcessing ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105 active:scale-95'}`}
+            >
+            {isProcessing ? (
+                <>
+                <Loader2 className="animate-spin" />
+                Synthesizing Voice...
+                </>
+            ) : (
+                <>
+                <Zap size={24} />
+                Start Automated Synthesis
+                </>
+            )}
+            </button>
+        </div>
       </main>
     </div>
   );
@@ -303,6 +326,10 @@ function EditorView({ masterDoc, suggestions, onBack, onApproveAll }: any) {
 
 function SettingsView({ settings, onBack, onSave }: any) {
   const [localSettings, setLocalSettings] = useState(settings);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const provider = localSettings?.aiProvider || 'openai';
+  const hasKey = settings?.apiKeys?.[provider];
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -313,8 +340,16 @@ function SettingsView({ settings, onBack, onSave }: any) {
           </button>
           <h1 className="text-lg font-semibold text-slate-800">Settings</h1>
         </div>
-        <button onClick={() => { onSave(localSettings); onBack(); }} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
-          Save Changes
+        <button 
+            disabled={isSaving}
+            onClick={async () => { 
+                setIsSaving(true);
+                await onSave(localSettings); 
+                setIsSaving(false);
+            }} 
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-slate-400"
+        >
+          {isSaving ? 'Saving...' : 'Save Changes'}
         </button>
       </header>
 
@@ -325,7 +360,7 @@ function SettingsView({ settings, onBack, onSave }: any) {
             <label className="flex flex-col gap-2">
               <span className="text-sm font-medium text-slate-700">AI Provider</span>
               <select 
-                value={localSettings.aiProvider} 
+                value={localSettings?.aiProvider} 
                 onChange={e => setLocalSettings({...localSettings, aiProvider: e.target.value})}
                 className="bg-white border rounded-lg px-4 py-2"
               >
@@ -339,7 +374,7 @@ function SettingsView({ settings, onBack, onSave }: any) {
               <span className="text-sm font-medium text-slate-700">API Key</span>
               <input 
                 type="password" 
-                placeholder="Paste your key here"
+                placeholder={hasKey ? "Stored securely (Enter new to overwrite)" : "Paste your key here"}
                 onChange={e => setLocalSettings({...localSettings, [`${localSettings.aiProvider}ApiKey`]: e.target.value})}
                 className="bg-white border rounded-lg px-4 py-2" 
               />
@@ -356,7 +391,7 @@ function SettingsView({ settings, onBack, onSave }: any) {
                 <div className="text-xs text-slate-500">How strictly should we follow the Master Doc tone?</div>
               </div>
               <select 
-                value={localSettings.voiceMirroring}
+                value={localSettings?.voiceMirroring}
                 onChange={e => setLocalSettings({...localSettings, voiceMirroring: e.target.value})}
                 className="bg-slate-50 border rounded px-3 py-1 text-sm"
               >
@@ -371,7 +406,7 @@ function SettingsView({ settings, onBack, onSave }: any) {
                 <div className="text-xs text-slate-500">Add only new stories or enhance existing ones?</div>
               </div>
               <select 
-                value={localSettings.synthesisDepth}
+                value={localSettings?.synthesisDepth}
                 onChange={e => setLocalSettings({...localSettings, synthesisDepth: e.target.value})}
                 className="bg-slate-50 border rounded px-3 py-1 text-sm"
               >

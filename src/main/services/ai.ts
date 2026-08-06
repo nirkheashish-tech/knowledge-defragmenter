@@ -11,7 +11,7 @@ export class BaseAIProvider {
       },
       body: JSON.stringify({
         model,
-        temperature: 0.2,
+        temperature: 0.3, // Slightly higher for more creative synthesis
         ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
         messages
       })
@@ -49,48 +49,61 @@ export class GenericAIProvider extends BaseAIProvider implements AIProvider {
 
   async extractMissingStories(masterDoc: string, sourceDoc: string, sections: string[]): Promise<SynthesisSuggestion[]> {
     const apiKey = await getApiKey(this.options.type);
-    if (!apiKey) return [];
+    if (!apiKey) {
+      console.error('No API key found for provider:', this.options.type);
+      return [];
+    }
+
+    console.log(`Starting synthesis for source doc (${sourceDoc.length} chars) against master doc (${masterDoc.length} chars)`);
 
     const prompt = `
-You are an expert editor. I have a "Master Document" and a "Source Document".
-Your goal is to find unique stories, facts, or insights in the Source Document that are NOT present in the Master Document.
+You are a master editor and knowledge synthesizer. 
+I have a "Master Document" which is my source of truth and voice anchor.
+I have a "Source Document" which contains interview notes, stories, and data.
+
+YOUR TASK:
+1. Identify unique stories, facts, or specific examples in the Source Document that are NOT already in the Master Document.
+2. Be aggressive: if a story is mentioned in the Source Doc but not covered in the Master Doc, it is a "Missing Story".
+3. Map each missing story to the most relevant section of the Master Document.
 
 Master Document Sections:
-${sections.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+${sections.length > 0 ? sections.map((s, i) => `${i + 1}. ${s}`).join('\n') : 'No specific sections identified. Use "General" or create new section titles.'}
 
 Master Document Content:
-${masterDoc.slice(0, 10000)}
+${masterDoc.slice(0, 15000)}
 
 Source Document Content:
-${sourceDoc.slice(0, 15000)}
+${sourceDoc.slice(0, 20000)}
 
-Return a JSON object with a list of suggestions. Each suggestion should include:
-- sectionTitle: The title of the section where this should be added.
-- originalText: The relevant excerpt from the Source Document.
-- suggestedAddition: A rewrite of that excerpt that matches the tone of the Master Document.
-- reason: Why this is a valuable addition.
+Return a JSON object with a list of suggestions. 
+IMPORTANT: Rewrite the source content to match the professional, internalized voice of the Master Document.
 
-Format: {"suggestions": [{"sectionTitle": "", "originalText": "", "suggestedAddition": "", "reason": ""}]}
+Format: {"suggestions": [{"sectionTitle": "Title of existing or new section", "originalText": "Excerpt from source", "suggestedAddition": "Rewritten text to insert", "reason": "Why this is a new insight"}]}
 `;
 
-    const content = await this.chat(apiKey, [
-      { role: 'system', content: 'You are a professional synthesizer. Return only valid JSON.' },
-      { role: 'user', content: prompt }
-    ], true);
-
     try {
+      const content = await this.chat(apiKey, [
+        { role: 'system', content: 'You are a professional synthesizer. You must return ONLY valid JSON.' },
+        { role: 'user', content: prompt }
+      ], true);
+
+      console.log('AI Raw Response:', content);
+
       const parsed = JSON.parse(content.replace(/^```json\s*|\s*```$/g, ''));
-      return (parsed.suggestions || []).map((s: any) => ({
+      const suggestions = (parsed.suggestions || []).map((s: any) => ({
         id: Math.random().toString(36).slice(2),
-        sectionId: s.sectionTitle, // We'll map title to ID later
+        sectionId: s.sectionTitle,
         sourceDocumentId: 'unknown',
         originalText: s.originalText,
         suggestedAddition: s.suggestedAddition,
         reason: s.reason,
         status: 'pending'
       }));
+
+      console.log(`Found ${suggestions.length} suggestions.`);
+      return suggestions;
     } catch (e) {
-      console.error('Failed to parse synthesis suggestions', e);
+      console.error('Failed to parse synthesis suggestions or AI call failed:', e);
       return [];
     }
   }
@@ -123,6 +136,12 @@ Format: {"suggestions": [{"sectionTitle": "", "originalText": "", "suggestedAddi
               messages: messages.map((m: any) => ({ role: m.role === 'system' ? 'user' : m.role, content: m.content }))
             })
           });
+          
+          if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`Claude API Error: ${err}`);
+          }
+          
           const data = await res.json();
           return data.content?.[0]?.text ?? '';
     }
@@ -140,7 +159,6 @@ export async function createAIProvider(): Promise<AIProvider> {
     case 'claude':
       return new GenericAIProvider({ type: 'claude', model: settings.claudeModel || 'claude-3-5-sonnet-20240620' });
     case 'gemini':
-      // Simplified for now, can add native Gemini support if needed
       return new GenericAIProvider({ type: 'openai', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: settings.geminiModel || 'gemini-1.5-flash' });
     case 'deepseek':
       return new GenericAIProvider({ type: 'deepseek', baseUrl: 'https://api.deepseek.com', model: settings.deepseekModel || 'deepseek-chat' });

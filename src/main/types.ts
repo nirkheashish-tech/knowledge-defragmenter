@@ -33,15 +33,17 @@ export type MasterSection = {
 export type SynthesisSuggestion = {
   id: string;
   sectionId: string;
-  sourceDocumentId: string;
+  sourceDocumentIds: string[]; // Changed to support multiple sources
   originalText: string;
   suggestedAddition: string;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
+  frequency: number; // How many documents mentioned this
+  voiceMatchScore: number; // 0-100 score
 };
 
 export interface AIProvider {
   summarize(text: string): Promise<string>;
-  extractMissingStories(masterDoc: string, sourceDoc: string, sections: string[]): Promise<SynthesisSuggestion[]>;
+  extractMissingStories(masterDoc: string, sourceDoc: string, sections: string[]): Promise<any[]>;
   rewriteInVoice(text: string, voiceAnchor: string): Promise<string>;
 }

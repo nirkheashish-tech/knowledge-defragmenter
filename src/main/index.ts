@@ -14,7 +14,7 @@ async function createWindow(): Promise<void> {
     height: 850,
     minWidth: 1024,
     minHeight: 768,
-    title: 'Defrag',
+    title: 'Knowledge Defragmenter',
     backgroundColor: '#ffffff',
     titleBarStyle: 'hiddenInset',
     webPreferences: {

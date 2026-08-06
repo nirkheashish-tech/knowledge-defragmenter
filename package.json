@@ -1,7 +1,7 @@
 {
-  "name": "defrag-synthesizer",
+  "name": "knowledge-defragmenter",
   "version": "1.0.0",
-  "description": "Defrag - An automated zero-effort synthesizer for your knowledge and voice.",
+  "description": "Knowledge Defragmenter - An automated zero-effort synthesizer for your knowledge and voice.",
   "main": "out/main/index.js",
   "author": "Defrag",
   "private": true,
@@ -40,7 +40,7 @@
   },
   "build": {
     "appId": "app.defrag.synthesizer",
-    "productName": "Defrag",
+    "productName": "Knowledge Defragmenter",
     "asar": true,
     "asarUnpack": [
       "prisma/generated-client/**",

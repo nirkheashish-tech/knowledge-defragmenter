@@ -1,4 +1,4 @@
-# Defrag Synthesizer
+# Knowledge Defragmenter
 
 **An automated, zero-effort synthesizer for your knowledge and voice.**
 

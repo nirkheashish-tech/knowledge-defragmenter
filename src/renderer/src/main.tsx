@@ -92,7 +92,7 @@ function App() {
       <header className="h-16 border-b bg-white flex items-center justify-between px-6 drag">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">D</div>
-          <h1 className="text-lg font-semibold text-slate-800">Defrag</h1>
+          <h1 className="text-lg font-semibold text-slate-800">Knowledge Defragmenter</h1>
         </div>
         <button onClick={() => setView('settings')} className="p-2 hover:bg-slate-100 rounded-full no-drag">
           <SettingsIcon size={20} className="text-slate-500" />

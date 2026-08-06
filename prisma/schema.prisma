@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Document {
+  id             String   @id @default(cuid())
+  googleFileId   String?  @unique
+  title          String
+  mimeType       String
+  plainText      String
+  summary        String?
+  sourceUrl      String?
+  importedAt     DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  conceptLinks   DocumentConcept[]
+}
+
+model Concept {
+  id              String   @id @default(cuid())
+  title           String
+  normalizedTitle String   @unique
+  summary         String
+  aliasesJson     String   @default("[]")
+  relatedJson     String   @default("[]")
+  examplesJson    String   @default("[]")
+  confidence      Float    @default(0.7)
+  embeddingJson   String   @default("[]")
+  duplicateOfId   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  documentLinks   DocumentConcept[]
+}
+
+model DocumentConcept {
+  documentId String
+  conceptId  String
+  excerpt    String?
+  confidence Float   @default(0.7)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  concept    Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, conceptId])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

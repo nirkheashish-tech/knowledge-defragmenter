@@ -91,7 +91,7 @@ function App() {
       {/* Refined Header */}
       <header className="h-16 border-b glass flex items-center justify-between px-6 drag z-50">
         <div className="flex items-center gap-3 header-mac-padding">
-          <img src="assets/icon.png" className="w-8 h-8 rounded-lg shadow-sm" alt="Logo" />
+          <img src="./assets/icon.png" className="w-8 h-8 rounded-lg shadow-sm" alt="Logo" />
           <h1 className="text-[17px] font-semibold tracking-tight">Knowledge Defragmenter</h1>
         </div>
         <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-black/5 rounded-full no-drag transition-colors">

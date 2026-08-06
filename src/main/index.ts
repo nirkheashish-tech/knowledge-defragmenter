@@ -111,7 +111,7 @@ function registerIpc(): void {
         
         // Simple similarity check for grouping
         if (current.sectionId === rawSuggestions[j].sectionId && 
-            calculateSimilarity(current.suggestedAddition, rawSuggestions[j].suggestedAddition) > 0.7) {
+            calculateSimilarity(current.suggestedAddition, rawSuggestions[j].suggestedAddition) > 0.5) {
           group.sourceDocumentIds.push(rawSuggestions[j].sourceDocumentId);
           group.frequency++;
           processedIndices.add(j);

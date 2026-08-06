@@ -42,6 +42,7 @@
   "build": {
     "appId": "app.defrag.synthesizer",
     "productName": "Knowledge Defragmenter",
+    "icon": "assets/icon.png",
     "asar": true,
     "asarUnpack": [
       "prisma/generated-client/**",
@@ -57,7 +58,8 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "target": ["zip"]
+      "target": ["zip"],
+      "icon": "assets/icon.png"
     }
   }
 }

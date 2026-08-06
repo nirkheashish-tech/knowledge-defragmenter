@@ -5,6 +5,8 @@ import { getSettings, saveSettings } from './services/settings';
 import { createAIProvider } from './services/ai';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import pdf from 'pdf-parse';
+import mammoth from 'mammoth';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -54,12 +56,28 @@ function registerIpc(): void {
 
   ipcMain.handle('file:read', async (_event, filePath: string) => {
     const ext = path.extname(filePath).toLowerCase();
-    if (ext === '.txt' || ext === '.md') {
-      return await fs.readFile(filePath, 'utf-8');
+    const buffer = await fs.readFile(filePath);
+
+    try {
+      if (ext === '.txt' || ext === '.md') {
+        return buffer.toString('utf-8');
+      }
+      
+      if (ext === '.pdf') {
+        const data = await pdf(buffer);
+        return data.text;
+      }
+
+      if (ext === '.docx') {
+        const result = await mammoth.extractRawText({ buffer });
+        return result.value;
+      }
+    } catch (error) {
+      console.error(`Failed to parse file ${filePath}:`, error);
+      throw new Error(`Failed to read ${ext.toUpperCase()} file. Make sure it's not corrupted.`);
     }
-    // For PDF and DOCX, we would use pdf-parse and mammoth
-    // For this prototype, we'll return a placeholder or just read as text
-    return await fs.readFile(filePath, 'utf-8');
+
+    return buffer.toString('utf-8');
   });
 
   ipcMain.handle('ai:synthesize', async (_event, { masterDoc, sourceDocs, sections }) => {

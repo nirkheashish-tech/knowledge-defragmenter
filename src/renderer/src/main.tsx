@@ -49,6 +49,14 @@ function App() {
 
   const startSynthesis = async () => {
     if (!masterDoc || sourceDocs.length === 0) return;
+    
+    const provider = settings?.aiProvider || 'openai';
+    if (!settings?.apiKeys?.[provider]) {
+      alert(`Please enter an API key for ${provider.toUpperCase()} in Settings first.`);
+      setView('settings');
+      return;
+    }
+
     setIsProcessing(true);
     
     // Extract sections from master doc (simple split by headers)
@@ -162,6 +170,11 @@ function App() {
           onClick={startSynthesis}
           className={`mt-12 px-8 py-4 rounded-full font-bold text-lg flex items-center gap-3 shadow-xl transition-all ${!masterDoc || sourceDocs.length === 0 || isProcessing ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105 active:scale-95'}`}
         >
+          {!settings?.apiKeys?.[settings?.aiProvider || 'openai'] && (
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-amber-100 text-amber-800 text-xs py-1 px-3 rounded-full border border-amber-200 whitespace-nowrap">
+              ⚠️ API Key required in Settings
+            </div>
+          )}
           {isProcessing ? (
             <>
               <Loader2 className="animate-spin" />
